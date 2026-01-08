@@ -179,12 +179,12 @@ export default function Journal() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {symptomList.map((symptom) => (
                         <label
-                        key={symptom}
-                        className="
-                            flex items-center space-x-2
-                            p-2 rounded-md
-                            hover:bg-gray-100 cursor-pointer
-                        "
+                            key={symptom}
+                            className="
+                                flex items-center space-x-2
+                                p-2 rounded-md
+                                hover:bg-gray-100 cursor-pointer
+                            "
                         >
                         <input
                             type="checkbox"
