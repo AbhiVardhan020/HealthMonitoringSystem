@@ -7,11 +7,17 @@ import "react-datepicker/dist/react-datepicker.css";
 export default function Journal() {
 
     // Get today's date in YYYY-MM-DD format
-    const today = new Date().toISOString().split('T')[0]
+    const todayStr = new Date().toISOString().split("T")[0];
+
+    const [isToday, setIsToday] = useState(true);
+    const [isReadOnly, setIsReadOnly] = useState(false);
+    const [entered, setEntered] = useState(false)
+
 
     const userId = localStorage.getItem('userId')
 
-    const [startDate, setStartDate] = useState(new Date());
+    // const [startDate, setStartDate] = useState(new Date());
+    const [selectedDate, setSelectedDate] = useState(todayStr);
     const [todaySymptoms, setTodaySymptoms] = useState({})
 
     const [sleep, setSleep] = useState(7);
@@ -43,7 +49,6 @@ export default function Journal() {
 
     const saveEntry=async ()=>{
 
-        console.log(todaySymptoms)
         try{
             const res = await fetch('http://localhost:5000/api/journal/entry', {
                 method: "POST",
@@ -61,13 +66,58 @@ export default function Journal() {
         }
     }
 
+    const fetchJournalForDate = async (dateStr) => {
+        try {
+            const res = await fetch(
+            `http://localhost:5000/api/journal/entry?userId=${userId}&date=${dateStr}`
+            );
+            const data = await res.json();
+            console.log(data)
+            
+            if (!data.exists) {
+                // No entry
+                setEntered(false)
+                setTodaySymptoms(createDefaultSymptomsMap());
+                setSleep(7);
+                setStress(3);
+                setMood(null);
+                setNotes("");
+                setIsReadOnly(!isToday); // editable only if today
+                return;
+            }
+
+            // Entry exists → populate & lock
+            const entry = data.entry;
+            setEntered(true)
+            setTodaySymptoms(entry.symptoms);
+            setSleep(entry.sleep_hours);
+            setStress(entry.stress_level);
+            setMood(entry.mood);
+            setNotes(entry.journal_text);
+
+            setIsReadOnly(true);
+        } catch (err) {
+            console.error("Failed to fetch journal", err);
+        }
+    };
+
+
     React.useEffect(()=>{
         setTodaySymptoms(createDefaultSymptomsMap())
     }, [])
 
-    React.useEffect(()=>{
-        console.log(startDate, today)
-    }, [startDate])
+
+    React.useEffect(() => {
+        console.log(selectedDate)
+        const selectedDateStr = selectedDate;
+        console.log(todayStr, selectedDateStr)
+        setIsToday(selectedDateStr === todayStr);
+        console.log(isToday)
+
+        fetchJournalForDate(selectedDateStr);
+    }, [selectedDate]);
+
+
 
     return (
         <div className="max-w-7xl mx-auto bg-white rounded-xl shadow p-8">
@@ -78,7 +128,32 @@ export default function Journal() {
             </label>
 
             {/* <DatePicker label="Basic date picker" /> */}
-            <DatePicker selected={startDate} onChange={(date) => setStartDate(date)} />
+            {/* <DatePicker selected={startDate} onChange={(date) => setStartDate(date)} /> */}
+
+            <input
+                type="date"
+                value={selectedDate}
+                max={todayStr}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="
+                border rounded-lg px-4 py-2
+                text-lg
+                focus:outline-none focus:ring-2 focus:ring-gray-300
+                "
+            />
+
+            {isReadOnly && (
+                <p className="text-sm text-red-500 mt-2">
+                    Journal entries can only be edited on the same day.
+                </p>
+            )}
+
+            {isReadOnly && !isToday && !entered && (
+                <p className="text-sm text-red-500 mt-2">
+                    You did not make any entry on {selectedDate}.
+                </p>
+            )} 
+
             <p className="text-sm text-gray-500 mt-1">
             You can only add journal entries for today
             </p>
@@ -113,6 +188,7 @@ export default function Journal() {
                         >
                         <input
                             type="checkbox"
+                            disabled={isReadOnly}
                             className="accent-gray-900"
                             checked={todaySymptoms[symptom] === 1}
                             onChange={(e) =>
@@ -144,6 +220,7 @@ export default function Journal() {
                 max="12"
                 step="0.5"
                 value={sleep}
+                disabled={isReadOnly}
                 onChange={(e) => setSleep(Number(e.target.value))}
                 className="w-full"
             />
@@ -160,6 +237,7 @@ export default function Journal() {
                 max="5"
                 step="1"
                 value={stress}
+                disabled={isReadOnly}
                 onChange={(e) => setStress(Number(e.target.value))}
                 className="w-full"
             />
@@ -177,6 +255,7 @@ export default function Journal() {
                 <button
                     key={m.label}
                     type="button"
+                    disabled={isReadOnly}
                     onClick={() => setMood(m)}
                     className={`
                     text-3xl p-2 rounded-full
@@ -204,6 +283,7 @@ export default function Journal() {
                 className="border rounded-lg px-4 py-2 w-full h-32"
                 placeholder="How was your day? What affected your health?"
                 value={notes}
+                disabled={isReadOnly}
                 onChange={(e) => setNotes(e.target.value)}
             />
         </div>
@@ -212,6 +292,7 @@ export default function Journal() {
         <button 
             className="bg-gray-900 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition"
             onClick={()=>saveEntry()}
+            disabled={isReadOnly}
         >
             Save Today's Entry
         </button>

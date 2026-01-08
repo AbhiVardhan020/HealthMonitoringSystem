@@ -53,3 +53,28 @@ def create_journal_entry():
     return jsonify({
         "message": "Journal entry saved successfully"
     }), 201
+
+
+@journal_bp.route("/entry", methods=["GET"])
+def get_journal_entry():
+    userId = request.args.get("userId")
+    date_str = request.args.get("date")
+
+    if not userId or not date_str:
+        return jsonify({"error": "Missing parameters"}), 400
+
+    entry = journals_collection.find_one({
+        "userId": ObjectId(userId),
+        "date": date_str
+    })
+
+    if not entry:
+        return jsonify({"exists": False}), 200
+
+    entry["_id"] = str(entry["_id"])
+    entry["userId"] = str(entry["userId"])
+
+    return jsonify({
+        "exists": True,
+        "entry": entry
+    })

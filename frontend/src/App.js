@@ -7,6 +7,7 @@ import Insights from './components/Insights';
 import Journal from './components/Journal';
 import Signin from './components/Signin';
 import Signup from './components/Signup';
+import Home from './components/Home';
 
 
 function App() {
@@ -14,6 +15,7 @@ function App() {
         <BrowserRouter>
             <Routes>
                 <Route path="/" element={<Layout />}>
+                    <Route path='/' element={ <Home /> } />
                     <Route path='/dashboard' element={ <Dashboard /> } />
                     <Route path='/journal' element={ <Journal /> } />
                     <Route path='/reports' element={ <Reports /> } />

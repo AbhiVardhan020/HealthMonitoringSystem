@@ -3,13 +3,15 @@ import { Outlet } from 'react-router-dom'
 
 export default function Layout() {
   return (
-    <div className="flex min-h-screen">
-      
-      <div className="w-64 bg-gray-900 text-white">
+    <div className="flex h-screen overflow-hidden">
+
+      {/* Sidebar */}
+      <div className="w-64 bg-gray-900 text-white h-screen sticky top-0">
         <NavBar />
       </div>
 
-      <div className="flex-1 p-6 bg-gray-100 overflow-y-scroll">
+      {/* Main Content */}
+      <div className="flex-1 bg-gray-100 overflow-y-auto p-6">
         <Outlet />
       </div>
 
