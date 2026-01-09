@@ -16,7 +16,8 @@ import numpy as np
 
 class DiseaseSymptomSystem:
     def __init__(self, disease_model=None, autoencoder=None, encoder=None, decoder=None):
-        self.csv_path = "final_health_dataset.csv"
+        # self.csv_path = "final_health_dataset.csv"
+        self.csv_path = "C:/Users/abhiv/Desktop/HealthMonitoringSystem/backend/ml/final_health_dataset.csv"
         self.df = None
         self.X = None
         self.y = None
