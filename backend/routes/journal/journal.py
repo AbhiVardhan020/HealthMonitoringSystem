@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from bson import ObjectId
 
 from database.mongo import journals_collection, users_collection
@@ -18,8 +18,11 @@ def create_journal_entry():
     if not userId:
         return jsonify({"error": "userId is required"}), 400
 
-    today_str = date.today().isoformat()
+    today = date.today()
+    today_str = today.isoformat()
+    yesterday_str = (today - timedelta(days=1)).isoformat()
 
+    # 🔹 Check duplicate journal
     existing_entry = journals_collection.find_one({
         "userId": ObjectId(userId),
         "date": today_str
@@ -28,6 +31,11 @@ def create_journal_entry():
     if existing_entry:
         return jsonify({"error": "Journal entry already exists for today"}), 409
 
+    # 🔹 Fetch user
+    user = users_collection.find_one({"_id": ObjectId(userId)})
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
     # 1️⃣ Extract fields
     todaySymptoms = data.get("todaySymptoms", {})
     sleep_hours = data.get("sleep")
@@ -35,33 +43,7 @@ def create_journal_entry():
     mood = data.get("mood")
     journal_text = data.get("notes", "")
 
-    # 2️⃣ Convert symptoms → ML input
-    positive_symptoms = [
-        name.lower() for name, value in todaySymptoms.items() if value == 1
-    ]
-
-    ml_prediction = {}
-    system = current_app.ml_system
-
-    # 3️⃣ Run ML prediction (safe guard)
-    if positive_symptoms:
-        disease, probabilities = system.predict_disease_from_names(positive_symptoms)
-
-        top_3_indices = np.argsort(probabilities)[-3:][::-1]
-
-        top_predictions = []
-        for idx in top_3_indices:
-            top_predictions.append({
-                "disease": system.label_encoder.inverse_transform([idx])[0],
-                "probability": float(probabilities[idx])
-            })
-
-        ml_prediction = {
-            "predicted_disease": disease,
-            "top_predictions": top_predictions
-        }
-
-    # 4️⃣ Create journal object
+    # 2️⃣ Create journal object
     journal = Journal(
         userId=ObjectId(userId),
         date=today_str,
@@ -69,16 +51,52 @@ def create_journal_entry():
         stress_level=stress_level,
         sleep_hours=sleep_hours,
         symptoms=todaySymptoms,
-        journal_text=journal_text,
-        ml_prediction=ml_prediction
+        journal_text=journal_text
     )
 
     journals_collection.insert_one(journal.to_dict())
 
+    # ===============================
+    # 🔥 STREAK & USER STATS UPDATE
+    # ===============================
+
+    last_journal_date = user.get("last_journal_date")
+    current_streak = user.get("streak", 0)
+    max_streak = user.get("max_streak", 0)
+    total_days = user.get("total_journal_days", 0)
+
+    # 🔹 Determine streak
+    if last_journal_date == yesterday_str:
+        current_streak += 1
+    else:
+        current_streak = 1
+
+    # 🔹 Update max streak
+    max_streak = max(max_streak, current_streak)
+
+    # 🔹 Update user document
+    users_collection.update_one(
+        {"_id": ObjectId(userId)},
+        {
+            "$set": {
+                "streak": current_streak,
+                "max_streak": max_streak,
+                "last_journal_date": today_str,
+                "updated_at": datetime.utcnow()
+            },
+            "$inc": {
+                "total_journal_days": 1
+            }
+        }
+    )
+
     return jsonify({
         "message": "Journal entry saved successfully",
-        "ml_prediction": ml_prediction
+        "streak": current_streak,
+        "max_streak": max_streak,
+        "total_journal_days": total_days + 1
     }), 201
+
 
 
 

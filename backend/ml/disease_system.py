@@ -13,6 +13,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 import warnings
 import numpy as np
+
 class DiseaseSymptomSystem:
     def __init__(self, disease_model=None, autoencoder=None, encoder=None, decoder=None):
         self.csv_path = "final_health_dataset.csv"
@@ -186,6 +187,7 @@ class DiseaseSymptomSystem:
             result.append((symptom_name, float(score)))
 
         return result
+    
 disease_model=tf.keras.models.load_model("weights_disease/disease_model")
 autoencoder=tf.keras.models.load_model("weights_disease/autoencoder")
 encoder=tf.keras.models.load_model("weights_disease/encoder")
